@@ -234,13 +234,13 @@ def evaluate_network(files, args, identity_list):
 		face_id = face_id / 255.0
 		face_id = face_id.permute(2, 0, 1)[None]
 		face_id = face_id.cuda()
-		face_id_vec = face_model(face_id).detach().cpu().numpy()[0]
+		face_id_vec = face_model.extract_feats(face_id).detach().cpu().numpy()[0]
 
 		# shape of identity_list: N x 512, face_id_vec: 512
 		# calculate cosine similarity
 		sim = numpy.dot(identity_list, face_id_vec)
 		# if maximum is less than 0.5, then it is unknown, save to folder
-		if numpy.max(sim) < 0.5:
+		if len(identity_list) == 0 or numpy.max(sim) < 0.6:
 			with open(os.path.join(args.identityPath, f'{len(identity_list):0>5}.pkl'), 'wb') as f:
 				pickle.dump(face_id_vec, f)
 			identity_number = len(identity_list)
@@ -402,7 +402,7 @@ def main():
  
  	# How to execute:
 	# if the video path is ./path_to_video/video.mp4, 
-	# python3 Columbia_test.py --videoPath ./path_to_video --videoName video --savePath ./path_to_save
+	# python3 Columbia_test.py --videoFolder ./path_to_video --videoName video
  
  
  
@@ -469,7 +469,7 @@ def main():
 	vidTracks = pickle.load(fil)
 
 	# Load identity vectors
-	identity_path = os.path.join(args.pyworkPath, 'face_identity')
+	identity_path = os.path.join('face_identity')
 	os.makedirs(identity_path, exist_ok=True)
 	args.identityPath = identity_path
 	identity_files = sorted(glob.glob(os.path.join(identity_path, '*.pkl')))
@@ -477,12 +477,15 @@ def main():
 	for file_name in identity_files:
 		with open(file_name, 'rb') as fil:
 			identity_list.append(pickle.load(fil))
-	identity_list = numpy.stack(identity_list, axis=0)
+	if len(identity_list) == 0:
+		identity_list = numpy.zeros((0, 512))
+	else:
+		identity_list = numpy.stack(identity_list, axis=0)
    
 	# Active Speaker Detection
 	files = glob.glob("%s/*.avi"%args.pycropPath)
 	files.sort()
-	scores, identity_result = evaluate_network(files, args)
+	scores, identity_result = evaluate_network(files, args, identity_list)
 	savePath = os.path.join(args.pyworkPath, 'scores.pckl')
 	identity_result_path = os.path.join(args.pyworkPath, 'identity_result.pckl')
 	with open(savePath, 'wb') as fil:
