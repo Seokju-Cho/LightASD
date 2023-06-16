@@ -218,6 +218,7 @@ def evaluate_network(files, args, identity_list):
 		audioFeature = python_speech_features.mfcc(audio, 16000, numcep = 13, winlen = 0.025, winstep = 0.010)
 		video = cv2.VideoCapture(os.path.join(args.pycropPath, fileName + '.avi'))
 		videoFeature = []
+		face_img_arr = []
 		face_feature = []
 		while video.isOpened():
 			ret, frames = video.read()
@@ -228,10 +229,7 @@ def evaluate_network(files, args, identity_list):
 				face_id = torch.from_numpy(face_id).float()
 				face_id = face_id / 255.0
 				face_id = face_id.permute(2, 0, 1)[None]
-				face_id = face_id.cuda()
-				with torch.no_grad():
-					face_id_vec = face_model.extract_feats(face_id).detach().cpu().numpy()[0]
-				face_feature.append(face_id_vec)
+				face_img_arr.append(face_id)
     
 				face = cv2.cvtColor(frames, cv2.COLOR_BGR2GRAY)
 				face = cv2.resize(face, (224,224))
@@ -239,7 +237,14 @@ def evaluate_network(files, args, identity_list):
 				videoFeature.append(face)
 			else:
 				break
-		face_feature = numpy.array(face_feature)
+
+		face_img_arr = torch.cat(face_img_arr, dim=0).cuda()
+		with torch.no_grad():
+			for batch in face_img_arr.split(32):
+				face_id_vec = face_model.extract_feats(batch).detach().cpu().numpy()
+				face_feature.append(face_id_vec)
+  
+		face_feature = numpy.concatenate(face_feature, axis=0)
 		face_id_vec = numpy.mean(face_feature, axis=0)
 		# shape of identity_list: N x 512, face_id_vec: 512
 		# calculate cosine similarity
