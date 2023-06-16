@@ -1,66 +1,92 @@
 ## A Light Weight Model for Active Speaker Detection
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/a-light-weight-model-for-active-speaker/audio-visual-active-speaker-detection-on-ava)](https://paperswithcode.com/sota/audio-visual-active-speaker-detection-on-ava?p=a-light-weight-model-for-active-speaker)
 
-This repository contains the code and model weight for our [paper](https://arxiv.org/pdf/2303.04439.pdf) (Accepted by CVPR 2023):
+Before executing the code, you should download the arcface weight file from (https://1drv.ms/u/s!AhMqVPD44cDOhkPsOU2S_HFpY9dC) and place the weight file at: weight/model_ir_se50.pth.
 
-> A Light Weight Model for Active Speaker Detection  
-> Junhua Liao, Haihan Duan, Kanghui Feng, Wanbing Zhao, Yanbing Yang, Liangyin Chen
-
-
-***
-### Evaluate on AVA-Activespeaker dataset 
-
-#### Data preparation
-Use the following code to download and preprocess the AVA dataset.
-```
-python train.py --dataPathAVA AVADataPath --download 
-```
-The AVA dataset and the labels will be downloaded into `AVADataPath`.
-
-#### Training
-You can train the model on the AVA dataset by using:
-```
-python train.py --dataPathAVA AVADataPath
-```
-`exps/exps1/score.txt`: output score file, `exps/exp1/model/model_00xx.model`: trained model, `exps/exps1/val_res.csv`: prediction for val set.
-
-#### Testing
-Our model weights have been placed in the `weight` folder. It performs `mAP: 94.06%` in the validation set. You can check it by using: 
-```
-python train.py --dataPathAVA AVADataPath --evaluation
-```
-
-
-***
-### Evaluate on Columbia ASD dataset
-
-#### Testing
-The model weights we trained on the AVA dataset have been placed in the `weight` folder. Then run the following code.
-```
-python Columbia_test.py --evalCol --colSavePath colDataPath
-```
-The Columbia ASD dataset and the labels will be downloaded into `colDataPath`. And you can get the following F1 result.
-| Name |  Bell  |  Boll  |  Lieb  |  Long  |  Sick  |  Avg.  |
-|----- | ------ | ------ | ------ | ------ | ------ | ------ |
-|  F1  |  82.7% |  75.7% |  87.0% |  74.5% |  85.4% |  81.1% |
-
-
-***
-### Citation
-
-Please cite our paper if you use this code or model. 
+How to execute:
+If the video path is ./path_to_video/video.mp4, run the following command:
 
 ```
-@inproceedings{liao2023light,
-  title={A Light Weight Model for Active Speaker Detection},
-  author={Liao, Junhua and Duan, Haihan and Feng, Kanghui and Zhao, Wanbing and Yang, Yanbing and Chen, Liangyin},
-  booktitle={IEEE/CVF Conference on Computer Vision and Pattern Recognition},
-  year={2023},
-  organization={IEEE}
-}
+python Columbia_test.py --videoFolder ./path_to_video --videoName video
 ```
 
-***
-### Acknowledgments
-Thanks for the support of TaoRuijie's open source [repository](https://github.com/TaoRuijie/TalkNet-ASD) for this research.
+When you execute, the following files will be generated:
 
+```
+├── pyavi
+│   ├── audio.wav (Audio from input video)
+│   ├── video.avi (Copy of the input video)
+│   ├── video_only.avi (Output video without audio)
+│   └── video_out.avi  (Output video with audio)
+├── pycrop (The detected face videos and audios)
+│   ├── 000000.avi
+│   ├── 000000.wav
+│   ├── 000001.avi
+│   ├── 000001.wav
+│   └── ...
+├── pyframes (All the video frames in this video)
+│   ├── 000001.jpg
+│   ├── 000002.jpg
+│   └── ...	
+└── pywork
+    ├── faces.pckl (face detection result)
+    ├── scene.pckl (scene detection result)
+    ├── scores.pckl (ASD result)
+    ├── tracks.pckl (face tracking result)
+    └── identity_result.pckl (identity result)
+```
+
+scores.pckl have the following format:
+```
+[
+  [
+    # for track 1
+    Talking score for frame 1,
+    Talking score for frame 2, 
+    …
+
+    Talking score for frame T_1,
+  ], [
+    # for track 2
+    Talking score for frame 1,
+    Talking score for frame 2, 
+    …
+
+    Talking score for frame T_1,
+  ],
+  …
+]
+
+```
+The talking score is between 0 and 1. The higher the score, the more likely the person is talking.
+
+The identity_result.pckl have the following format:
+```
+[
+  Face Id number of track 1,
+  Face Id number of track 2,
+  …
+  Face Id number of track N,
+]
+```
+
+
+The tracks.pckl have the following format:
+```
+[
+  {
+    # for track 1
+    ‘bbox’ : [
+        bbox for track 1 frame n_start,
+        …
+        bbox for track 1 frame n_end,
+    ]
+    ‘frame’: [
+      track 1 frame number n_start,
+      …
+      track 1 frame number n_end,
+    ]
+
+  }, 
+  … # track 1, …, N
+]
+```
