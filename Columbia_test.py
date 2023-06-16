@@ -218,29 +218,35 @@ def evaluate_network(files, args, identity_list):
 		audioFeature = python_speech_features.mfcc(audio, 16000, numcep = 13, winlen = 0.025, winstep = 0.010)
 		video = cv2.VideoCapture(os.path.join(args.pycropPath, fileName + '.avi'))
 		videoFeature = []
+		face_feature = []
 		while video.isOpened():
 			ret, frames = video.read()
 			if ret == True:
 				face_id = cv2.cvtColor(frames, cv2.COLOR_BGR2RGB)
 				face_id = cv2.resize(face_id, (256, 256))
+				face_id = numpy.array(face_id)
+				face_id = torch.from_numpy(face_id).float()
+				face_id = face_id / 255.0
+				face_id = face_id.permute(2, 0, 1)[None]
+				face_id = face_id.cuda()
+				with torch.no_grad():
+					face_id_vec = face_model.extract_feats(face_id).detach().cpu().numpy()[0]
+				face_feature.append(face_id_vec)
+    
 				face = cv2.cvtColor(frames, cv2.COLOR_BGR2GRAY)
 				face = cv2.resize(face, (224,224))
 				face = face[int(112-(112/2)):int(112+(112/2)), int(112-(112/2)):int(112+(112/2))]
 				videoFeature.append(face)
 			else:
 				break
-		face_id = numpy.array(face_id)
-		face_id = torch.from_numpy(face_id).float()
-		face_id = face_id / 255.0
-		face_id = face_id.permute(2, 0, 1)[None]
-		face_id = face_id.cuda()
-		face_id_vec = face_model.extract_feats(face_id).detach().cpu().numpy()[0]
-
+		face_feature = numpy.array(face_feature)
+		face_id_vec = numpy.mean(face_feature, axis=0)
 		# shape of identity_list: N x 512, face_id_vec: 512
 		# calculate cosine similarity
 		sim = numpy.dot(identity_list, face_id_vec)
+		print(sim)
 		# if maximum is less than 0.5, then it is unknown, save to folder
-		if len(identity_list) == 0 or numpy.max(sim) < 0.6:
+		if len(identity_list) == 0 or numpy.max(sim) < 0.5:
 			with open(os.path.join(args.identityPath, f'{len(identity_list):0>5}.pkl'), 'wb') as f:
 				pickle.dump(face_id_vec, f)
 			identity_number = len(identity_list)

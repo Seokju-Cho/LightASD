@@ -93,11 +93,18 @@ class FaceNet(torch.nn.Module):
         self.pool = torch.nn.AdaptiveAvgPool2d((256, 256))
         self.face_pool = torch.nn.AdaptiveAvgPool2d((112, 112))
         self.facenet.eval()
+        # self.i = 0
 
     def extract_feats(self, x):
         if x.shape[2] != 256:
             x = self.pool(x)
-        x = x[:, :, 35:223, 32:220]  # Crop interesting region
+        # x = x[:, :, 35:223, 32:220]  # Crop interesting region
+        # save for visualization
+        # import matplotlib.pyplot as plt
+        # plt.imshow(x[0].permute(1, 2, 0).detach().cpu().numpy())
+        # plt.savefig(f'test{self.i}.png')
+        
+        # self.i += 1
         x = self.face_pool(x)
         x_feats = self.facenet(x)
         return x_feats
